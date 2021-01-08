@@ -3,14 +3,38 @@
 
 import * as React from 'react'
 
-function Greeting({initialName = ''}) {
-  // 🐨 initialize the state to the value from localStorage
-  // 💰 window.localStorage.getItem('name') || initialName
-  const [name, setName] = React.useState(initialName)
+function useLocalStorageState(
+  key,
+  defaultValue = '',
+  serialize = JSON.stringify,
+  deserialize = JSON.parse,
+) {
+  const [value, setValue] = React.useState(() => {
+    const valueFromLocalStorage = window.localStorage.getItem(key)
 
-  // 🐨 Here's where you'll use `React.useEffect`.
-  // The callback should set the `name` in localStorage.
-  // 💰 window.localStorage.setItem('name', name)
+    if (valueFromLocalStorage) {
+      return deserialize(valueFromLocalStorage)
+    }
+
+    return typeof defaultValue === 'function' ? defaultValue() : defaultValue
+  })
+
+  const prevRefKey = React.useRef(key)
+
+  React.useEffect(() => {
+    const prevKey = prevRefKey.current
+
+    if (prevKey !== key) {
+      window.localStorage.removeItem(prevKey)
+    }
+    window.localStorage.setItem(key, serialize(value))
+  }, [key, value, serialize])
+
+  return [value, setValue]
+}
+
+function Greeting({initialName = ''}) {
+  const [name, setName] = useLocalStorageState('name', initialName)
 
   function handleChange(event) {
     setName(event.target.value)
@@ -19,7 +43,7 @@ function Greeting({initialName = ''}) {
     <div>
       <form>
         <label htmlFor="name">Name: </label>
-        <input onChange={handleChange} id="name" />
+        <input onChange={handleChange} id="name" value={name} />
       </form>
       {name ? <strong>Hello {name}</strong> : 'Please type your name'}
     </div>
