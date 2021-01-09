@@ -5,8 +5,39 @@ import * as React from 'react'
 
 const INITIAL_VALUE = Array(9).fill(null)
 
+function useLocalStorageState(
+  key,
+  defaultValue = '',
+  serialize = JSON.stringify,
+  deserialize = JSON.parse,
+) {
+  const [state, setState] = React.useState(() => {
+    const valueInLocalStorage = window.localStorage.getItem(key)
+
+    if (valueInLocalStorage) {
+      return deserialize(valueInLocalStorage)
+    }
+
+    return typeof defaultValue === 'function' ? defaultValue() : defaultValue
+  })
+
+  const prevRefKey = React.useRef(key)
+
+  React.useEffect(() => {
+    const prevKey = prevRefKey.current
+
+    if (prevKey !== key) {
+      window.localStorage.removeItem(prevKey)
+    }
+
+    window.localStorage.setItem(key, serialize(state))
+  }, [key, state, serialize])
+
+  return [state, setState]
+}
+
 function Board() {
-  const [squares, setSquares] = React.useState(INITIAL_VALUE)
+  const [squares, setSquares] = useLocalStorageState('squares', INITIAL_VALUE)
 
   const nextValue = calculateNextValue(squares)
   const winner = calculateWinner(squares)
